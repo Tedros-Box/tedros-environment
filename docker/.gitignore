@@ -1,0 +1,16 @@
+# Ignorar pacotes de deploy e certificados em qualquer lugar do projeto
+*.ear
+*.war
+*.pem
+*.crt
+JNDI_PROPERTIES.md
+implementation_plan.md
+walkthrough.md
+H2_MIGRATION_GUIDE.md
+
+# Ignorar todo o conteúdo dentro destas pastas específicas
+deployment_webapp/
+deployment_app/
+backup/
+nginx/ssl_local/
+nginx/conf.d/
