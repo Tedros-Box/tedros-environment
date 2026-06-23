@@ -222,3 +222,5 @@ A classe que deve ser iniciada é a **`com.tedros.TedrosLauncher`** (e **NÃO** 
 
 *A `TedrosLauncher` age como uma blindagem protetora.* 
 Se a IDE sobrecarregar o renderizador do console (`System.out`), o sistema de logging do Tedros (Logback) e o Console interno da JVM podem conflitar gerando prints duplicados ou travas do sistema Windows (buffer IO). A `TedrosLauncher` silencia a saída padrão e empurra todos os erros não processados ou logs de crash violentos (System.err) de maneira controlada para o diretório de dados em: `C:\Users\SEU_USUARIO\.tedros\LOG\tedros_crash.log`. Após isso ser feito em segurança, ela chama de fato a janela visual através do `Main.main(args)`.
+
+> **Dica para Desenvolvedores:** Caso precise visualizar os logs normais no console da IDE (Eclipse/IntelliJ) durante a execução local, adicione o argumento da VM `-Dtedros.dev=true` nas configurações de execução (*Run Configurations*) do `TedrosLauncher`. Isso reativará a saída padrão.
