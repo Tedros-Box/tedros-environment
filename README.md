@@ -136,7 +136,7 @@ Para que o desenvolvedor suba o contêiner sem enfrentar os erros comuns de *cra
 
 ### `openjfx-sdk`
 **Finalidade:**
-Disponibilizar os binários base e arquivos nativos (DLLs) do SDK do JavaFX diretamente no repositório. Isso garante que a aplicação Desktop possa ser empacotada e executada por qualquer desenvolvedor a partir dos scripts sem precisar buscar o SDK ou configurar caminhos absolutos como o de instalação `D:\java\...`.
+Disponibilizar os binários base e arquivos nativos (DLLs) do SDK do JavaFX diretamente no repositório. Isso garante que a aplicação Desktop possa ser empacotada e executada por qualquer desenvolvedor a partir dos scripts sem precisar buscar o SDK ou configurar caminhos absolutos.
 
 ---
 
