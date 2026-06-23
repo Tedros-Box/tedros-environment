@@ -1,0 +1,3 @@
+javapackager -deploy -BsystemWide=true -BappVersion=8.5 -Bicon="tedrosico.ico" -BshortcutHint=true -BuserJvmOptions=-Xmx=512m -BuserJvmOptions=-Xms=512m -Bruntime="C:\Program Files\Java\jre-1.8" -native exe -outdir packages -outfile TedrosBox -srcdir target -srcfiles startup-tedros-box-1.0-SNAPSHOT-jar-with-dependencies.jar -appclass com.tedros.Main -name "Tedros" -title "Tedros" -vendor "Tedros"
+
+jpackage -n Tedros --type exe 

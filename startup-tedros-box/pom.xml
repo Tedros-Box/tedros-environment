@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  
+  <!-- PARENT INFO -->
+  <parent>
+    <groupId>com.tedros</groupId>
+    <artifactId>tedros-environment</artifactId>
+    <version>17.0.1-SNAPSHOT</version>
+  </parent>
+	
+  <artifactId>startup-tedros-box</artifactId>
+  
+  <name>Tedros Box startup project</name>
+  <description>The startup project to load, run and package the main class</description>
+  
+  <dependencies>
+	
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.4.14</version>
+    </dependency>
+	
+    <!-- https://mvnrepository.com/artifact/org.openjfx/javafx -->
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx</artifactId>
+      <version>17.0.11</version>
+      <type>pom</type>
+      <!--<scope>provided</scope>-->
+    </dependency>
+	
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-controls</artifactId>
+      <version>17.0.11</version>
+      <!--<scope>provided</scope>-->
+    </dependency>
+	
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-fxml</artifactId>
+      <version>17.0.11</version>
+      <!--<scope>provided</scope>-->
+    </dependency>
+	
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-web</artifactId>
+      <version>17.0.11</version>
+      <!--<scope>provided</scope>-->
+    </dependency>
+
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>tedros-box</artifactId>
+      <version>${tedros.box}</version>
+      <scope>compile</scope>
+    </dependency>
+    <!-- -->
+    <!--<dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-samples-fx</artifactId>
+      <version>${app.samples}</version>
+      <scope>compile</scope>
+    </dependency>
+    -->    
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-stock-fx</artifactId>
+      <version>${app.stock}</version>
+      <scope>compile</scope>
+    </dependency>
+  	<!--
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-services-fx</artifactId>
+      <version>${app.services}</version>
+      <scope>compile</scope>
+    </dependency>-->
+    <!-- -->
+	 
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-person-fx</artifactId>
+      <version>${app.person}</version>
+      <scope>compile</scope>
+    </dependency>
+  	
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-itsupport-tools-fx</artifactId>
+      <version>1.0-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>  
+    
+    <dependency>
+      <groupId>org.tedros</groupId>
+      <artifactId>app-ifood-tools-fx</artifactId>
+      <version>1.0-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+  	
+  </dependencies>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.tedros.TedrosLauncher</mainClass> <!-- Mudança: Alterado para TedrosLauncher para consistência -->
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id> <!-- this is used for inheritance merges -->
+            <phase>package</phase> <!-- bind to the packaging phase -->
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.3</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-maven-plugin</artifactId>
+        <version>0.0.8</version>
+        <configuration>
+          <mainClass>com.tedros.TedrosLauncher</mainClass> <!-- Mudança: Alterado para TedrosLauncher -->
+          <options>
+            <option>--add-opens</option>
+            <option>javafx.graphics/javafx.scene.layout=ALL-UNNAMED</option>
+          </options>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <mainClass>com.tedros.TedrosLauncher</mainClass> <!-- Mudança: Alterado para TedrosLauncher -->
+          <commandlineArgs>--module-path ..\openjfx-sdk\17.0.11\lib --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.graphics</commandlineArgs>
+        </configuration>
+      </plugin>
+      <!-- Nova plugin: Copia dependências JavaFX para target/dependency -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/dependency</outputDirectory>
+              <includeScope>provided</includeScope> <!-- Copia apenas as provided (JavaFX) -->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+	  
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+    </resources>
+  </build>
+  
+  <!-- REPOSITORIES -->
+  <repositories>
+    <repository>
+      <id>oss.sonatype.org</id>
+      <name>OSS Sonatype Staging</name>
+      <url>https://oss.sonatype.org/content/groups/staging</url>
+    </repository>
+    <repository>
+      <id>apache.releases.https</id>
+      <name>Apache</name>
+      <url>https://repository.apache.org/service/local/staging/deploy/maven2</url>
+    </repository>
+    <repository>
+      <id>Tedros-Box</id>
+      <name>Tedros</name>
+      <url>https://maven.pkg.github.com/tedros-box/package</url>
+    </repository>
+  </repositories>
+  
+</project>

@@ -1,0 +1,21 @@
+services:
+  ubuntu-server:
+    build: .
+    container_name: ubuntu_nginx_mongo
+    ports:
+      - "8080:80" # Porta para o NGINX
+      - "27017:27017" # Porta para o MongoDB
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - tedros-network
+
+networks:
+  tedros-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  tomee1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tedros-tomee1
+    restart: always
+    environment:
+      - TZ=America/Sao_Paulo
+      - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000
+      - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
+      - REDIS_PORT=6379
+    ports:
+      - "8000:8000" # JPDA debug port (tomee1)
+    depends_on:
+      - h2db
+      - mongodb
+      - redis
+    networks:
+      - tedros-net
+
+  tomee2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tedros-tomee2
+    restart: always
+    environment:
+      - TZ=America/Sao_Paulo
+      - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8001
+      - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
+      - REDIS_PORT=6379
+    ports:
+      - "8001:8001" # JPDA debug port (tomee2)
+    depends_on:
+      - h2db
+      - mongodb
+      - redis
+    networks:
+      - tedros-net
+
+  h2db:
+    image: oscarfonts/h2:1.4.199
+    container_name: tedros-h2db
+    restart: always
+    environment:
+      - H2_OPTIONS=-web -webAllowOthers -tcp -tcpAllowOthers -ifNotExists -baseDir /opt/h2-data
+    ports:
+      - "1521:1521"
+      - "81:81"
+    volumes:
+      - h2_data:/opt/h2-data
+      - ./db/init.sql:/opt/h2-data/init.sql:ro
+    networks:
+      - tedros-net
+
+  mongodb:
+    image: mongo:8.0
+    container_name: tedros-mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=itsupport
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./nginx/ssl_local/mongodb.pem:/etc/ssl/mongodb.pem:ro
+      # Novo mapeamento para a Autoridade Certificadora (CA) do mkcert
+      - ./nginx/ssl_local/rootCA.pem:/etc/ssl/rootCA.pem:ro
+    command:
+      [
+        "mongod",
+        "--tlsMode",
+        "requireTLS",
+        "--tlsCertificateKeyFile",
+        "/etc/ssl/mongodb.pem",
+        # Informa a cadeia de confiança exigida pelo Mongo 8.0
+        "--tlsCAFile",
+        "/etc/ssl/rootCA.pem",
+        # Permite que o Java e o Compass conectem sem precisar enviar um certificado de cliente
+        "--tlsAllowConnectionsWithoutCertificates"
+      ]
+    networks:
+      - tedros-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: tedros-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - tedros-net
+
+  nginx:
+    image: nginx:latest
+    container_name: tedros-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Produção
+      # - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # - ./nginx/ssl:/etc/letsencrypt:ro
+      # Local tests (mkcert)
+      - ./nginx/conf.d.local:/etc/nginx/conf.d:ro
+      - ./nginx/ssl_local:/etc/nginx/ssl:ro
+    depends_on:
+      - tomee1
+      - tomee2
+    networks:
+      - tedros-net
+
+volumes:
+  h2_data:
+  mongo_data:
+
+networks:
+  tedros-net:
+    driver: bridge
