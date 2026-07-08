@@ -74,11 +74,6 @@
 			<artifactId>poi</artifactId>
 			<version>${apache.poi}</version>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml-schemas</artifactId>
-			<version>4.1.2</version>
-		</dependency>
 	    <dependency>
 	      <groupId>org.apache.poi</groupId>
 	      <artifactId>poi-ooxml-lite</artifactId>
@@ -131,6 +126,11 @@
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<version>${h2.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>${postgresql.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
@@ -197,16 +197,16 @@
 								<artifactId>h2</artifactId>
 							</dependency>
 							<dependency>
+								<groupId>org.postgresql</groupId>
+								<artifactId>postgresql</artifactId>
+							</dependency>
+							<dependency>
 								<groupId>org.apache.poi</groupId>
 								<artifactId>poi</artifactId>
 							</dependency>
 							<dependency>
 								<groupId>org.apache.poi</groupId>
 								<artifactId>poi-ooxml</artifactId>
-							</dependency>
-							<dependency>
-								<groupId>org.apache.poi</groupId>
-								<artifactId>poi-ooxml-schemas</artifactId>
 							</dependency>
 							<dependency>
 								<groupId>commons-logging</groupId>
@@ -227,10 +227,6 @@
 							<dependency>
 								<groupId>org.apache.xmlbeans</groupId>
 								<artifactId>xmlbeans</artifactId>
-							</dependency>
-							<dependency>
-								<groupId>org.apache.poi</groupId>
-								<artifactId>poi-ooxml-schemas</artifactId>
 							</dependency>
 							<dependency>
 								<groupId>org.apache.commons</groupId>
@@ -269,6 +265,13 @@
 					<configuration>
 						<home>${project.build.directory}/catalina-base</home>
 						<properties>
+							<!-- Feature flag do banco: valores definidos pelos profiles
+							     db-h2 (default) e db-postgres; o Cargo substitui os tokens
+							     @tedros.db.*@ nos config files (system.properties) -->
+							<tedros.db.driver>${tedros.db.driver}</tedros.db.driver>
+							<tedros.db.url>${tedros.db.url}</tedros.db.url>
+							<tedros.db.user>${tedros.db.user}</tedros.db.user>
+							<tedros.db.password>${tedros.db.password}</tedros.db.password>
 							<cargo.servlet.port>8081</cargo.servlet.port>
 							<cargo.rmi.port>8206</cargo.rmi.port>
 							<cargo.tomcat.ajp.port>8009</cargo.tomcat.ajp.port>
@@ -384,6 +387,31 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<!-- PROFILES: feature flag do banco de dados (uso: mvn cargo:run -Pdb-postgres) -->
+	<profiles>
+		<profile>
+			<id>db-h2</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<tedros.db.driver>org.h2.Driver</tedros.db.driver>
+				<tedros.db.url>jdbc:h2:tcp://localhost/~/.tedrosData/h2/db;INIT=runscript from '~/.tedrosData/init.sql';</tedros.db.url>
+				<tedros.db.user>tdrs</tedros.db.user>
+				<tedros.db.password>xpto</tedros.db.password>
+			</properties>
+		</profile>
+		<profile>
+			<id>db-postgres</id>
+			<properties>
+				<tedros.db.driver>org.postgresql.Driver</tedros.db.driver>
+				<tedros.db.url>jdbc:postgresql://localhost:5432/tedros</tedros.db.url>
+				<tedros.db.user>tdrs</tedros.db.user>
+				<tedros.db.password>xpto</tedros.db.password>
+			</properties>
+		</profile>
+	</profiles>
 
 	<!-- REPOSITORIES -->
 	<repositories>

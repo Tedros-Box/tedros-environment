@@ -9,6 +9,16 @@ ENV TOMEE_HOME=/usr/local/tomee
 ENV REDIS_HOST=localhost
 ENV REDIS_PORT=6379
 
+# Versão do driver JDBC do PostgreSQL incluído em common/lib
+ENV POSTGRESQL_JDBC_VERSION=42.7.5
+
+# Feature flag do banco de dados (defaults apontam para o H2).
+# Para usar PostgreSQL, sobrescreva estas variáveis no docker-compose/ambiente.
+ENV TEDROS_DB_DRIVER="org.h2.Driver"
+ENV TEDROS_DB_URL="jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';"
+ENV TEDROS_DB_USER=tdrs
+ENV TEDROS_DB_PASSWORD=xpto
+
 # Instalação de pacotes e TomEE (mantido o original)
 RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p ${TOMEE_HOME} \
@@ -20,6 +30,10 @@ RUN mkdir -p ${TOMEE_HOME} \
 WORKDIR ${TOMEE_HOME}
 COPY conf/* ${TOMEE_HOME}/conf/
 
+# O system.properties vira template: o entrypoint.sh gera o arquivo final
+# a cada start substituindo os tokens @TEDROS_DB_*@ pelas env vars
+RUN mv ${TOMEE_HOME}/conf/system.properties ${TOMEE_HOME}/conf/system.properties.template
+
 # Cria a pasta e copia o script de inicialização do H2
 RUN mkdir -p /opt/h2-data
 COPY db/init.sql /opt/h2-data/init.sql
@@ -29,6 +43,11 @@ COPY db/init.sql /opt/h2-data/init.sql
 RUN mkdir -p ${TOMEE_HOME}/common/lib
 COPY common/lib/ ${TOMEE_HOME}/common/lib/
 
+# Driver JDBC do PostgreSQL em common/lib (junto do H2) — o driver pertence
+# ao container, não à aplicação
+RUN curl --retry 5 -fSL https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_VERSION}/postgresql-${POSTGRESQL_JDBC_VERSION}.jar \
+    -o ${TOMEE_HOME}/common/lib/postgresql-${POSTGRESQL_JDBC_VERSION}.jar
+
 # --- Cópia dos artefatos de deploy ---
 ARG SRC_APP=./deployment_app
 ARG SRC_WEBAPP=./deployment_webapp
@@ -37,6 +56,10 @@ COPY ${SRC_APP}/ ${TOMEE_HOME}/apps/
 COPY ${SRC_WEBAPP}/ ${TOMEE_HOME}/webapps/
 # --------------------------------
 
+COPY entrypoint.sh /entrypoint.sh
+# Remove CRLF (repo em Windows) e garante permissão de execução
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
 RUN chmod +x ${TOMEE_HOME}/bin/catalina.sh
 EXPOSE 8080 8081 8443 8009 8005 8000 8001
-CMD ["bin/catalina.sh", "run"]
+CMD ["/entrypoint.sh"]

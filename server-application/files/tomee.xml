@@ -5,11 +5,14 @@
 	<!-- activate next line to be able to deploy applications in apps -->
 	<Deployments dir="apps" />
 
+	<!-- Datasource parametrizado: os valores tedros.db.* vem do conf/system.properties
+	     (injetados no build pelo Cargo a partir dos profiles Maven db-h2 / db-postgres).
+	     O TomEE resolve os placeholders ${...} em tempo de execucao. -->
 	<Resource id="tedrosDataSource" type="DataSource">
-		JdbcDriver org.h2.Driver
-		JdbcUrl jdbc:h2:tcp://localhost/~/.tedrosData/h2/db;INIT=runscript from '~/.tedrosData/init.sql';
-		UserName tdrs
-		Password xpto
+		JdbcDriver ${tedros.db.driver}
+		JdbcUrl ${tedros.db.url}
+		UserName ${tedros.db.user}
+		Password ${tedros.db.password}
 		JtaManaged true
 		PoolPreparedStatements true
 		DefaultAutoCommit true

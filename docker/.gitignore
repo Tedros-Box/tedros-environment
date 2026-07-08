@@ -7,6 +7,7 @@ JNDI_PROPERTIES.md
 implementation_plan.md
 walkthrough.md
 H2_MIGRATION_GUIDE.md
+.env.postgres
 
 # Ignorar todo o conteúdo dentro destas pastas específicas
 deployment_webapp/

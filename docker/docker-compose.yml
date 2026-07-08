@@ -1,6 +1,11 @@
 version: '3.8'
 
 services:
+  # Feature flag do banco de dados via profiles do Compose:
+  #   docker compose --profile h2 up -d        -> stack com H2
+  #   docker compose --profile postgres --env-file .env.postgres up -d  -> stack com PostgreSQL
+  # As variaveis TEDROS_DB_* tem default H2 e podem ser sobrescritas
+  # via ambiente ou --env-file (ver .env.postgres).
   tomee1:
     build:
       context: .
@@ -12,12 +17,23 @@ services:
       - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
+      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
+      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';}
+      - TEDROS_DB_USER=${TEDROS_DB_USER:-tdrs}
+      - TEDROS_DB_PASSWORD=${TEDROS_DB_PASSWORD:-xpto}
     ports:
       - "8000:8000" # JPDA debug port (tomee1)
     depends_on:
-      - h2db
-      - mongodb
-      - redis
+      h2db:
+        condition: service_started
+        required: false
+      postgres:
+        condition: service_healthy
+        required: false
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - tedros-net
 
@@ -32,12 +48,23 @@ services:
       - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8001
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
+      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
+      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';}
+      - TEDROS_DB_USER=${TEDROS_DB_USER:-tdrs}
+      - TEDROS_DB_PASSWORD=${TEDROS_DB_PASSWORD:-xpto}
     ports:
       - "8001:8001" # JPDA debug port (tomee2)
     depends_on:
-      - h2db
-      - mongodb
-      - redis
+      h2db:
+        condition: service_started
+        required: false
+      postgres:
+        condition: service_healthy
+        required: false
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - tedros-net
 
@@ -45,6 +72,7 @@ services:
     image: oscarfonts/h2:1.4.199
     container_name: tedros-h2db
     restart: always
+    profiles: ["h2"]
     environment:
       - H2_OPTIONS=-web -webAllowOthers -tcp -tcpAllowOthers -ifNotExists -baseDir /opt/h2-data
     ports:
@@ -53,6 +81,28 @@ services:
     volumes:
       - h2_data:/opt/h2-data
       - ./db/init.sql:/opt/h2-data/init.sql:ro
+    networks:
+      - tedros-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tedros-postgres
+    restart: always
+    profiles: ["postgres"]
+    environment:
+      - POSTGRES_USER=tdrs
+      - POSTGRES_PASSWORD=xpto
+      - POSTGRES_DB=tedros
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tdrs -d tedros"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - tedros-net
 
@@ -118,6 +168,7 @@ services:
 
 volumes:
   h2_data:
+  pg_data:
   mongo_data:
 
 networks:
