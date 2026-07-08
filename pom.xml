@@ -36,6 +36,7 @@
 		<tedros.jee>17-0.0.1</tedros.jee>
 		
 		<junit.version>4.13</junit.version>
+		<postgresql.version>42.7.5</postgresql.version>
 		<tomee.ejb.url>http://127.0.0.1:8080/tomee/ejb</tomee.ejb.url>
 	
 	</properties>

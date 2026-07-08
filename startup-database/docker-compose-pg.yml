@@ -1,0 +1,26 @@
+# PostgreSQL local para desenvolvimento (alternativa ao H2 do startup-database).
+# Uso:
+#   docker compose -f docker-compose-pg.yml up -d
+# Depois suba o servidor com: mvn cargo:run -Pdb-postgres (em server-application)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tedros-postgres-local
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tdrs
+      - POSTGRES_PASSWORD=xpto
+      - POSTGRES_DB=tedros
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data_local:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tdrs -d tedros"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pg_data_local:

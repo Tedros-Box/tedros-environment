@@ -1,3 +1,23 @@
+# Prepara os dados locais do Tedros.
+#   -Database h2       (default) cria a pasta ~/.tedrosData e copia o init.sql do H2
+#   -Database postgres sobe o PostgreSQL local via docker-compose-pg.yml
+param(
+    [ValidateSet("h2", "postgres")]
+    [string]$Database = "h2"
+)
+
+if ($Database -eq "postgres") {
+    $ScriptDir = $PSScriptRoot
+    if ([string]::IsNullOrEmpty($ScriptDir)) {
+        $ScriptDir = Get-Location
+    }
+    Write-Host "Starting local PostgreSQL (docker-compose-pg.yml)..."
+    docker compose -f (Join-Path $ScriptDir "docker-compose-pg.yml") up -d
+    Write-Host "PostgreSQL available at localhost:5432 (db=tedros, user=tdrs)."
+    Write-Host "Schemas are created automatically by init-postgres.sql on first run."
+    return
+}
+
 $DataFolder = Join-Path $HOME ".tedrosData"
 Write-Host "Checking data folder: $DataFolder"
 

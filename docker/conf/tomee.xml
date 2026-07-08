@@ -5,11 +5,15 @@
   <!-- activate next line to be able to deploy applications in apps -->
   <Deployments dir="apps" />
   
+  <!-- Datasource parametrizado (feature flag H2 / PostgreSQL).
+       Os placeholders ${tedros.db.*} sao resolvidos pelo TomEE em runtime a partir
+       do conf/system.properties, gerado pelo entrypoint.sh com base nas variaveis
+       de ambiente TEDROS_DB_* do container. -->
   <Resource id="tedrosDataSource" type="DataSource">
-  JdbcDriver org.h2.Driver
-  JdbcUrl jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';
-  UserName tdrs
-  Password xpto
+  JdbcDriver ${tedros.db.driver}
+  JdbcUrl ${tedros.db.url}
+  UserName ${tedros.db.user}
+  Password ${tedros.db.password}
   JtaManaged true
   PoolPreparedStatements true
   DefaultAutoCommit true
