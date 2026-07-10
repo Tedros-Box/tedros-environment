@@ -68,7 +68,12 @@
 			<type>ear</type>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>org.tedros</groupId>
+			<artifactId>tedros-ai-ejb-ear</artifactId>
+			<type>ear</type>
+			<version>${tedros.jee}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
@@ -317,11 +322,6 @@
 						</deployable>						
 						<deployable>
 							<groupId>org.tedros</groupId>
-							<artifactId>app-chat-ejb-ear</artifactId>
-							<type>ear</type>
-						</deployable>
-						<deployable>
-							<groupId>org.tedros</groupId>
 							<artifactId>app-extensions-ejb-ear</artifactId>
 							<type>ear</type>
 						</deployable>
@@ -330,7 +330,7 @@
 							<artifactId>app-person-ejb-ear</artifactId>
 							<type>ear</type>
 						</deployable>
-						<deployable>
+						<!--<deployable>
 							<groupId>org.tedros</groupId>
 							<artifactId>app-services-ejb-ear</artifactId>
 							<type>ear</type>
@@ -342,7 +342,17 @@
 						</deployable>
 						<deployable>
 							<groupId>org.tedros</groupId>
+							<artifactId>app-chat-ejb-ear</artifactId>
+							<type>ear</type>
+						</deployable>
+						<deployable>
+							<groupId>org.tedros</groupId>
 							<artifactId>app-samples-ejb-ear</artifactId>
+							<type>ear</type>
+						</deployable>-->
+						<deployable>
+							<groupId>org.tedros</groupId>
+							<artifactId>tedros-ai-ejb-ear</artifactId>
 							<type>ear</type>
 						</deployable>
 					</deployables>
