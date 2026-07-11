@@ -1,0 +1,73 @@
+{
+  "uid": "tedros-ai-users",
+  "title": "Tedros AI — Consumo por Usuário",
+  "tags": ["tedros-ai"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "table",
+      "title": "Top consumidores de tokens (30 dias)",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_name, SUM(total_tokens) AS tokens, COUNT(*) AS turns FROM tedros_core.tai_usage_event WHERE ts > now() - interval '30 days' GROUP BY user_name ORDER BY tokens DESC LIMIT 20"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "type": "table",
+      "title": "Tools por usuário (7 dias)",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_name, elem->>'name' AS tool, elem->>'outcome' AS outcome, COUNT(*) AS calls FROM tedros_core.tai_usage_event t CROSS JOIN LATERAL jsonb_array_elements(t.tool_calls::jsonb) AS elem WHERE t.tool_calls IS NOT NULL AND t.ts > now() - interval '7 days' GROUP BY user_name, elem->>'name', elem->>'outcome' ORDER BY calls DESC LIMIT 50"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Tokens no tempo por usuário",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 10 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '1h'), user_name AS metric, SUM(total_tokens) AS tokens FROM tedros_core.tai_usage_event WHERE $__timeFilter(ts) GROUP BY 1, user_name ORDER BY 1"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "table",
+      "title": "Erros por usuário (7 dias)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_name, error_code, COUNT(*) AS errors FROM tedros_core.tai_usage_event WHERE outcome = 'ERROR' AND ts > now() - interval '7 days' GROUP BY user_name, error_code ORDER BY errors DESC LIMIT 50"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    }
+  ]
+}

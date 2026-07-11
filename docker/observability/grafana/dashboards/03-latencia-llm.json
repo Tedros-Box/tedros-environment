@@ -1,0 +1,55 @@
+{
+  "uid": "tedros-ai-llm",
+  "title": "Tedros AI — Latência LLM",
+  "tags": ["tedros-ai"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Latência LLM p50/p95/p99 por provider",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le, provider) (rate(tedros_ai_llm_request_seconds_bucket[5m])))", "legendFormat": "p50 {{provider}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(tedros_ai_llm_request_seconds_bucket[5m])))", "legendFormat": "p95 {{provider}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(tedros_ai_llm_request_seconds_bucket[5m])))", "legendFormat": "p99 {{provider}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Throughput de turnos (turnos/min por type)",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (type) (rate(tedros_ai_turns_total[1m])) * 60", "legendFormat": "{{type}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Latência ponta-a-ponta do turno p95 por type",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le, type) (rate(tedros_ai_turn_seconds_bucket[5m])))", "legendFormat": "p95 {{type}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Erros de LLM por outcome (rate 5m)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (provider, outcome) (rate(tedros_ai_llm_request_seconds_count[5m]))", "legendFormat": "{{provider}} {{outcome}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    }
+  ]
+}
