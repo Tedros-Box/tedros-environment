@@ -31,6 +31,25 @@ groups:
         annotations:
           summary: "Turnos batendo no limite de recursão (possível loop de tools)"
 
+      # Gasto de IA nas ultimas 24h acima do limite. Ajuste o teto (USD) conforme
+      # o orcamento; o custo real por chamada esta no ledger TAI_LLM_CALL (Grafana
+      # "Custo LLM"). O counter e cumulativo => increase[24h] da o gasto do dia.
+      - alert: RelayDailySpendHigh
+        expr: sum(increase(tedros_ai_cost_usd_total[24h])) > 50
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Gasto de IA nas últimas 24h acima do limite (US$ {{ $value | printf \"%.2f\" }})"
+          description: "sum(increase(tedros_ai_cost_usd_total[24h])) ultrapassou US$ 50."
+
+      # Preco ausente no TAI_PRICE: chamadas sem custo => billing subestimado.
+      - alert: RelayPricingMissing
+        expr: sum by (provider, model, tier) (rate(tedros_ai_pricing_missing_total[15m])) > 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Preço ausente no TAI_PRICE ({{ $labels.provider }}/{{ $labels.model }}/{{ $labels.tier }}) — custo não calculado"
+
       - alert: RelayHeapPressure
         expr: sum by (node) (jvm_memory_used_bytes{area="heap"}) / sum by (node) (jvm_memory_max_bytes{area="heap"}) > 0.85
         for: 10m
