@@ -15,6 +15,7 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000
+      - TEDROS_NODE_NAME=tomee1 # label 'node' das metricas Prometheus (por no)
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
       - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
@@ -46,6 +47,7 @@ services:
     environment:
       - TZ=America/Sao_Paulo
       - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8001
+      - TEDROS_NODE_NAME=tomee2 # label 'node' das metricas Prometheus (por no)
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
       - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
@@ -174,3 +176,5 @@ volumes:
 networks:
   tedros-net:
     driver: bridge
+    # nome fixo p/ o compose de observabilidade anexar como 'external' (dev)
+    name: tedros-net

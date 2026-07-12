@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: tedros-ai-relay
+    # /ai/prometheus (NAO /ai/metrics): o TomEE Plume ja mapeia <ctx>/metrics
+    # para o servlet do MicroProfile Metrics, que tem precedencia sobre o JAX-RS.
+    metrics_path: /ai/prometheus
+    static_configs:
+      # DEV: nomes de servico na rede tedros-net. A porta HTTP interna do TomEE
+      # e 8081 (mesma do upstream do nginx), NAO 8080.
+      - targets: ["tomee1:8081", "tomee2:8081"]
+        labels: { env: "dev" }
+      # PROD: troque pelos host:porta das maquinas de aplicacao (rede interna).
+      # - targets: ["10.0.1.11:8081", "10.0.1.12:8081"]
+      #   labels: { env: "prod" }

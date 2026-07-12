@@ -1,0 +1,208 @@
+{
+  "uid": "tedros-ai-cost",
+  "title": "Tedros AI — Custo LLM",
+  "tags": ["tedros-ai"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "Provider",
+        "type": "query",
+        "label": "Provider",
+        "datasource": { "type": "postgres", "uid": "tedros_pg" },
+        "definition": "SELECT DISTINCT provider FROM tedros_core.tai_llm_call ORDER BY 1",
+        "query": "SELECT DISTINCT provider FROM tedros_core.tai_llm_call ORDER BY 1",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": "All",
+        "multi": false,
+        "current": { "selected": true, "text": "All", "value": "All" },
+        "options": []
+      },
+      {
+        "name": "Model",
+        "type": "query",
+        "label": "Model",
+        "datasource": { "type": "postgres", "uid": "tedros_pg" },
+        "definition": "SELECT DISTINCT model FROM tedros_core.tai_llm_call ORDER BY 1",
+        "query": "SELECT DISTINCT model FROM tedros_core.tai_llm_call ORDER BY 1",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": "All",
+        "multi": false,
+        "current": { "selected": true, "text": "All", "value": "All" },
+        "options": []
+      },
+      {
+        "name": "User_ID",
+        "type": "query",
+        "label": "Usuário",
+        "datasource": { "type": "postgres", "uid": "tedros_pg" },
+        "definition": "SELECT user_name AS \"__text\", user_id AS \"__value\" FROM tedros_core.tai_llm_call WHERE user_id IS NOT NULL GROUP BY user_name, user_id ORDER BY user_name",
+        "query": "SELECT user_name AS \"__text\", user_id AS \"__value\" FROM tedros_core.tai_llm_call WHERE user_id IS NOT NULL GROUP BY user_name, user_id ORDER BY user_name",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": "All",
+        "multi": false,
+        "current": { "selected": true, "text": "All", "value": "All" },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Custo total (período)",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(cost_usd),0) AS custo FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}')"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Chamadas ao LLM",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS chamadas FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}')"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Tokens de saída",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(tokens_out),0) AS tokens_out FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}')"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Cache-hit rate (input)",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN COALESCE(SUM(tokens_in_cache + tokens_in_full),0) = 0 THEN 0 ELSE SUM(tokens_in_cache)::numeric / SUM(tokens_in_cache + tokens_in_full) END AS cache_hit FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}')"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "min": 0, "max": 1 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Custo diário por provider (USD)",
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', ts) AS \"time\", provider AS metric, SUM(cost_usd) AS custo FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}') GROUP BY 1, provider ORDER BY 1"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "custom": { "drawStyle": "bars", "fillOpacity": 70, "stacking": { "mode": "normal" } } }, "overrides": [] }
+    },
+    {
+      "type": "piechart",
+      "title": "Custo por provider",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT provider AS metric, SUM(cost_usd) AS custo FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}') GROUP BY provider ORDER BY custo DESC"
+        }
+      ],
+      "options": { "reduceOptions": { "values": true, "calcs": [] }, "pieType": "pie", "legend": { "displayMode": "list", "placement": "right" } },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "US$/hora por provider (tempo real — Prometheus)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (provider) (rate(tedros_ai_cost_usd_total[5m])) * 3600", "legendFormat": "{{provider}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "type": "bargauge",
+      "title": "Custo por tier (USD)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT context_tier AS metric, SUM(cost_usd) AS custo FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}') GROUP BY context_tier ORDER BY custo DESC"
+        }
+      ],
+      "options": { "displayMode": "gradient", "orientation": "horizontal" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4 }, "overrides": [] }
+    },
+    {
+      "type": "table",
+      "title": "Top usuários por custo",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT user_name AS usuario, SUM(cost_usd) AS custo_usd, SUM(tokens_out) AS tokens_out, COUNT(*) AS chamadas FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}') GROUP BY user_name ORDER BY custo_usd DESC LIMIT 20"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [ { "matcher": { "id": "byName", "options": "custo_usd" }, "properties": [ { "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 } ] } ] }
+    },
+    {
+      "type": "table",
+      "title": "Custo por modelo / tier",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
+      "datasource": { "type": "postgres", "uid": "tedros_pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT provider, model, context_tier AS tier, SUM(cost_usd) AS custo_usd, SUM(tokens_in_full) AS in_full, SUM(tokens_in_cache) AS in_cache, SUM(tokens_out) AS out_tokens, COUNT(*) AS chamadas FROM tedros_core.tai_llm_call WHERE $__timeFilter(ts) AND ('${Provider}' = 'All' OR provider = '${Provider}') AND ('${Model}' = 'All' OR model = '${Model}') AND ('${User_ID}' = 'All' OR user_id::text = '${User_ID}') GROUP BY provider, model, context_tier ORDER BY custo_usd DESC"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [ { "matcher": { "id": "byName", "options": "custo_usd" }, "properties": [ { "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 } ] } ] }
+    }
+  ]
+}

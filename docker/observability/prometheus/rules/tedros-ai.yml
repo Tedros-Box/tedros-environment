@@ -1,0 +1,72 @@
+groups:
+  - name: tedros-ai-relay
+    rules:
+      - alert: RelayLLMErrorRateHigh
+        expr: sum(rate(tedros_ai_errors_total{code=~"LLM_ERROR|INTERNAL_ERROR"}[5m])) > 0.1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Taxa de erro do LLM elevada no Tool Relay"
+          description: "Erros LLM/INTERNAL > 0.1/s por 5min."
+
+      - alert: RelayLLMLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le, provider) (rate(tedros_ai_llm_request_seconds_bucket[5m]))) > 30
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 de latência do LLM acima de 30s ({{ $labels.provider }})"
+
+      # Usa o gauge tedros_ai_conversations_max (sem hardcode do limite).
+      - alert: RelayConversationCapNear
+        expr: sum(tedros_ai_conversations_active) / max(tedros_ai_conversations_max) > 0.9
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Store de conversas perto do limite — usuários perdendo contexto (LRU)"
+
+      - alert: RelayMaxDepthFrequent
+        expr: sum(rate(tedros_ai_errors_total{code="MAX_DEPTH"}[15m])) > 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Turnos batendo no limite de recursão (possível loop de tools)"
+
+      # Gasto de IA nas ultimas 24h acima do limite. Ajuste o teto (USD) conforme
+      # o orcamento; o custo real por chamada esta no ledger TAI_LLM_CALL (Grafana
+      # "Custo LLM"). O counter e cumulativo => increase[24h] da o gasto do dia.
+      - alert: RelayDailySpendHigh
+        expr: sum(increase(tedros_ai_cost_usd_total[24h])) > 50
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Gasto de IA nas últimas 24h acima do limite (US$ {{ $value | printf \"%.2f\" }})"
+          description: "sum(increase(tedros_ai_cost_usd_total[24h])) ultrapassou US$ 50."
+
+      # Preco ausente no TAI_PRICE: chamadas sem custo => billing subestimado.
+      - alert: RelayPricingMissing
+        expr: sum by (provider, model, tier) (rate(tedros_ai_pricing_missing_total[15m])) > 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Preço ausente no TAI_PRICE ({{ $labels.provider }}/{{ $labels.model }}/{{ $labels.tier }}) — custo não calculado"
+
+      - alert: RelayHeapPressure
+        expr: sum by (node) (jvm_memory_used_bytes{area="heap"}) / sum by (node) (jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Heap acima de 85% no nó de IA ({{ $labels.node }})"
+
+      - alert: RelayNoTraffic
+        expr: sum(rate(tedros_ai_turns_total[10m])) == 0
+        for: 15m
+        labels: { severity: info }
+        annotations:
+          summary: "Sem turnos de IA há 15min (serviço ocioso ou fora do ar)"
+
+      - alert: RelayTargetDown
+        expr: up{job="tedros-ai-relay"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Nó de IA sem scrape ({{ $labels.instance }}) — /ai/metrics inacessível"

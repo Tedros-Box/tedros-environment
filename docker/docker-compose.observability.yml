@@ -1,0 +1,71 @@
+# Stack de observabilidade do Tool Relay (Prometheus + Grafana + Alertmanager).
+# Compose SEPARADO do principal (docker-compose.yml) — pode rodar em outra maquina
+# em producao trocando apenas os targets do prometheus.yml.
+#
+# DEV (mesma maquina): anexa-se a rede 'tedros-net' criada pelo compose principal.
+#   docker compose -f docker-compose.yml --profile postgres up -d
+#   docker compose -f docker-compose.observability.yml up -d
+#
+# Grafana:      http://localhost:3000  (admin/${GF_ADMIN_PASSWORD:-admin})
+# Prometheus:   http://localhost:9090
+# Alertmanager: http://localhost:9093
+name: tedros-observability
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: tedros-prometheus
+    restart: always
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    networks:
+      - tedros-net
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: tedros-grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # senha do datasource Postgres (default do ambiente dev)
+      - TEDROS_DB_PASSWORD=${TEDROS_DB_PASSWORD:-xpto}
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - tedros-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: tedros-alertmanager
+    restart: always
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - tedros-net
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  tedros-net:
+    external: true          # criada pelo compose principal (name: tedros-net)
+    name: tedros-net

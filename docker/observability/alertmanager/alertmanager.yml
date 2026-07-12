@@ -1,0 +1,23 @@
+# Configuracao minima do Alertmanager. Sem receiver externo por default —
+# ajuste 'receivers' para e-mail/Slack/webhook conforme o ambiente.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: ["alertname", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: default
+    # Exemplo (desabilitado): notificacao por webhook interno.
+    # webhook_configs:
+    #   - url: http://host.docker.internal:9000/alerts
+    #     send_resolved: true
+
+inhibit_rules:
+  - source_matchers: ['severity = critical']
+    target_matchers: ['severity = warning']
+    equal: ['alertname']
