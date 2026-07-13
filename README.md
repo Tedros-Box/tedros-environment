@@ -1,7 +1,7 @@
 # Tedros Environment
 
 ## Introdução
-Este repositório contém toda a infraestrutura e configurações necessárias para rodar o ambiente do Tedros utilizando Docker (incluindo serviços como Nginx, instâncias do TomEE, MongoDB, PostgreSQL ou H2 e Redis). 
+Este repositório contém toda a infraestrutura e configurações necessárias para rodar o ambiente do Tedros utilizando Docker (incluindo serviços como Nginx, instâncias do TomEE, MongoDB, PostgreSQL ou H2 e Redis). Inclui também, em compose separado, a stack de observabilidade (Prometheus + Grafana + Alertmanager) do **Tool Relay** — o serviço de IA centralizado no backend — com dashboards de tokens, custo em USD, tools, latência do LLM e saúde do relay (ver [`docker/observability`](#dockerobservability) abaixo).
 
 ## Boas Práticas de Estrutura de Diretórios
 Para garantir que o fluxo de build funcione de maneira automatizada e integrada, a melhor prática é manter os três repositórios principais do ecossistema Tedros nivelados em um mesmo diretório base. Sua estrutura de pastas deve ficar exatamente desta forma:
@@ -118,7 +118,7 @@ Abaixo detalhamos a finalidade de cada projeto e sub-pasta contidos neste reposi
 
 ### `docker`
 **Finalidade:**
-Fornecer a infraestrutura em contêineres para executar o ambiente Tedros completo (Nginx, instâncias do TomEE, MongoDB, Redis e banco de dados PostgreSQL ou H2) em uma rede isolada, utilizando o `docker-compose`.
+Fornecer a infraestrutura em contêineres para executar o ambiente Tedros completo (Nginx, instâncias do TomEE, MongoDB, Redis e banco de dados PostgreSQL ou H2) em uma rede isolada, utilizando o `docker-compose`. A subpasta `observability/` complementa este compose com um stack **separado** (Prometheus + Grafana + Alertmanager) para monitorar o Tool Relay de IA — ver [`docker/observability`](#dockerobservability).
 
 **How-to:**
 Para que o desenvolvedor suba o contêiner sem enfrentar os erros comuns de *crash* nos serviços (ex: "Connection refused"):
@@ -155,6 +155,109 @@ Para que o desenvolvedor suba o contêiner sem enfrentar os erros comuns de *cra
    docker-compose --profile h2 up -d --build
    ```
 6. Opcionalmente, acompanhe a saúde dos contêineres com `docker-compose logs -f`.
+
+---
+
+### `docker/observability`
+**Finalidade:**
+Stack de observabilidade do **Tool Relay** (o serviço de IA centralizado no backend, módulo `tdrs-ai` do repositório `Tedros`): Prometheus (métricas), Grafana (dashboards) e Alertmanager (alertas). Fica em um `docker-compose` **separado** do principal (`docker-compose.observability.yml`) de propósito — em produção essa stack pode rodar em outra máquina, bastando trocar os alvos de scrape no `prometheus.yml`, sem tocar no compose da aplicação.
+
+> **Nota:** essa stack é opcional para rodar o Tedros — sem ela a aplicação funciona normalmente, você só perde os dashboards/alertas do consumo de IA.
+
+**Pré-requisito de rede:** o compose principal (`docker-compose.yml`) já declara a rede com nome fixo `tedros-net`; o compose de observabilidade se anexa a ela como rede `external`. Por isso, **suba primeiro o ambiente principal** e só depois a observabilidade.
+
+**How-to (dev, mesma máquina):**
+```bash
+cd tedros-environment/docker
+docker compose --profile postgres --env-file .env.postgres up -d   # ambiente principal primeiro
+docker compose -f docker-compose.observability.yml up -d           # depois, a stack de observabilidade
+```
+
+**Variáveis de ambiente:**
+
+| Variável | Default | Onde é usada |
+|---|---|---|
+| `GF_ADMIN_USER` | `admin` | Usuário admin do Grafana |
+| `GF_ADMIN_PASSWORD` | `admin` | Senha admin do Grafana — **troque em produção** |
+| `TEDROS_DB_PASSWORD` | `xpto` | Senha do datasource Postgres do Grafana (mesma do banco principal, ver `.env.postgres`) |
+| `TEDROS_NODE_NAME` | `tomee1` / `tomee2` | Já definida no `docker-compose.yml` principal por nó — vira o label `node` em todas as métricas Prometheus do Tool Relay, permitindo distinguir os dois nós do cluster |
+
+**Endpoints depois de subir:**
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (login `admin`/`admin` por padrão, pasta **"Tedros AI"**)
+- Alertmanager: `http://localhost:9093`
+
+**De onde vêm as métricas:** cada nó TomEE expõe o Tool Relay em `tomeeN:8081/ai/prometheus` (porta HTTP interna 8081, **não** 8080; e o path é `/ai/prometheus`, não `/ai/metrics` — o TomEE Plume já reserva `<contexto>/metrics` para o MicroProfile Metrics). O Prometheus (`observability/prometheus/prometheus.yml`) raspa os dois nós a cada 15s. Liveness/readiness do módulo de IA fica em `/ai/status` (MicroProfile Health).
+
+> **Atenção — segurança:** `/ai/*` nunca é roteado pelo Nginx para fora (bloqueio explícito com `return 403;` em `nginx/conf.d.local/tedros.conf`, defesa em profundidade). O Prometheus só alcança os endpoints por dentro da rede Docker.
+
+**Dashboards provisionados** (`observability/grafana/dashboards/`, pasta "Tedros AI" no Grafana):
+
+| Arquivo | Dashboard | Conteúdo |
+|---|---|---|
+| `01-tokens-custo.json` | Tedros AI — Tokens & Custo | Tokens/min por provider, split input/output, acumulado 24h |
+| `02-tools.json` | Tedros AI — Tools | Top-N tools mais usadas, taxa de erro por tool, latência |
+| `03-latencia-llm.json` | Tedros AI — Latência LLM | p50/p95/p99 por provider e modelo, throughput de turnos |
+| `04-saude-relay.json` | Tedros AI — Saúde do Relay | Conversas ativas vs. cap, evictions, pending turns, heap/GC/threads, uptime, profundidade do turno |
+| `05-consumo-usuario.json` | Tedros AI — Consumo por Usuário | Top consumidores de tokens, tools por usuário (datasource Postgres) |
+| `06-custo-llm.json` | Tedros AI — Custo LLM | Custo em USD por provider/modelo/tier/usuário, cache-hit rate, custo diário, US$/h em tempo real |
+
+> **Atenção:** os painéis de `05-consumo-usuario.json` e a maior parte de `06-custo-llm.json` leem o ledger no **Postgres** (datasource `Tedros-Postgres`) — exigem `docker compose --profile postgres`. No profile `h2` esses painéis ficam vazios (o ledger vive no H2, não é consultado pelo Grafana); só o painel de US$/h (via Prometheus) continua funcionando.
+
+**Alertas** (`observability/prometheus/rules/tedros-ai.yml`):
+
+| Alerta | Dispara quando |
+|---|---|
+| `RelayLLMErrorRateHigh` | Taxa de erro `LLM_ERROR`/`INTERNAL_ERROR` > 0,1/s por 5min |
+| `RelayLLMLatencyHigh` | p95 de latência do LLM > 30s por 10min |
+| `RelayConversationCapNear` | Conversas ativas / `sys.ai.toolrelay.max.conversations` > 90% (risco de usuários perderem contexto por LRU) |
+| `RelayMaxDepthFrequent` | Turnos batendo no limite de recursão (`MAX_DEPTH`) — possível loop de tools |
+| `RelayDailySpendHigh` | Gasto de IA acumulado nas últimas 24h > US$ 50 (teto ajustável na regra) |
+| `RelayPricingMissing` | Chamada ao LLM sem preço cadastrado em `TAI_PRICE` — custo subestimado |
+| `RelayHeapPressure` | Heap do nó > 85% por 10min |
+| `RelayNoTraffic` | Nenhum turno de IA nos últimos 15min (serviço ocioso ou fora do ar) |
+| `RelayTargetDown` | Prometheus não consegue raspar um dos nós (`/ai/prometheus` inacessível) |
+
+Depois de editar as regras, recarregue sem reiniciar o Prometheus (a stack sobe com `--web.enable-lifecycle`):
+```bash
+curl.exe -X POST http://localhost:9090/-/reload
+```
+
+**Configuração do Tool Relay (properties, não variáveis de ambiente):** o módulo `tdrs-ai-ejb` semeia as próprias chaves no primeiro boot do EAR (editáveis depois na UI de configurações do Tedros):
+
+| Property | Default | Uso |
+|---|---|---|
+| `sys.ai.toolrelay.enabled` | `false` | Liga o modo relay (IA centralizada no backend) no cliente FE |
+| `sys.ai.toolrelay.conversation.ttl.min` | `30` | TTL de eviction de conversas inativas em memória |
+| `sys.ai.toolrelay.pendingturn.ttl.min` | `5` | Timeout de um turno com tool call pendente no cliente |
+| `sys.ai.toolrelay.max.conversations` | `2000` | Cap global de conversas simultâneas em memória (por nó) |
+| `sys.ai.toolrelay.debug` | `false` | Liga log de request/response do LLM |
+| `sys.ai.usage.retention.months` | `4` | Meses de detalhe (`TAI_LLM_CALL`/`TAI_USAGE_EVENT`) antes do rollup+expurgo diário |
+
+**Banco de dados — tabelas do custo de IA** (schema `tedros_core`, PU `tedros_core_pu`): `TAI_PRICE` (preços por provider/modelo/tier, versionado), `TAI_LLM_CALL` (ledger — 1 linha por chamada ao LLM) e `TAI_USAGE_MONTHLY` (rollup mensal, nunca expurgado). São criadas automaticamente pelo `create-tables` no boot do EAR.
+
+> **Atenção no deploy:** `create-tables` cria tabelas novas mas **não** adiciona colunas a tabelas já existentes. Se você já tinha um deploy anterior (sem custo de tokens) e a tabela `TAI_USAGE_EVENT` já existia, rode manualmente (idempotente, mesma sintaxe em H2 e Postgres):
+> ```sql
+> ALTER TABLE tedros_core.tai_usage_event ADD COLUMN IF NOT EXISTS turn_id VARCHAR(60);
+> ALTER TABLE tedros_core.tai_usage_event ADD COLUMN IF NOT EXISTS tokens_in_cache BIGINT;
+> ALTER TABLE tedros_core.tai_usage_event ADD COLUMN IF NOT EXISTS total_cost_usd DECIMAL(12,6);
+> ```
+> Postgres: `docker exec -i tedros-postgres psql -U tdrs -d tedros -c "<os 3 ALTER>"`. H2: console web em `http://localhost:81` (`jdbc:h2:tcp://localhost:1521/h2/db`, usuário/senha `tdrs`/`xpto`).
+
+> **Dica Pro — cluster de 2 nós:** `tomee1` e `tomee2` sobem juntos e ambos rodam o seed de preços (`TAI_PRICE`) de forma idempotente; existe uma pequena janela de corrida que pode gerar linhas duplicadas (preços iguais, inofensivo). Para evitar, na primeira subida suba um nó de cada vez.
+
+**Deploy do módulo de IA (`tdrs-ai-ejb-ear`):** o EAR é assado na imagem do TomEE (o `Dockerfile` copia `deployment_app/` para `apps/`); o build Maven do `tdrs-ai` já copia o `.ear` para cá automaticamente (mesma property `docker.app.folder` usada pelos demais módulos).
+```powershell
+cd D:\GitHub\Tedros-Box\Tedros\tedrosbox\tdrs-ai
+mvn clean package
+cd D:\GitHub\Tedros-Box\tedros-environment\docker
+docker compose up -d --build tomee1 tomee2
+```
+
+**Verificação:**
+- `curl http://localhost:9090/-/healthy` e a UI do Prometheus em `/targets` mostrando `tedros-ai-relay` como `UP`.
+- Grafana → pasta "Tedros AI" com os 6 dashboards renderizando.
+- Logs do TomEE mostrando `TAI_PRICE seeded on first boot: N rows ...` sem erro de DDL.
 
 ---
 
