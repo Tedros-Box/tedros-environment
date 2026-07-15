@@ -4,7 +4,7 @@
 # Depois suba o servidor com: mvn cargo:run -Pdb-postgres (em server-application)
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: tedros-postgres-local
     restart: unless-stopped
     environment:

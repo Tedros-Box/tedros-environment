@@ -87,7 +87,7 @@ services:
       - tedros-net
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: tedros-postgres
     restart: always
     profiles: ["postgres"]
