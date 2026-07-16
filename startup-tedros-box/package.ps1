@@ -8,13 +8,13 @@ $mainClass = "com.tedros.TedrosLauncher"
 $icon = "tedrosico.ico"
 
 # JDK 17 Paths - User Defined
-$jdkHome = "D:\java\jdk\jdk-17.0.10"
+$jdkHome = "C:\Users\davis.dun\.jabba\jdk\temurin@17.0.19"
 $jpackage = "$jdkHome\bin\jpackage.exe"
 $javac = "$jdkHome\bin\javac.exe"
 $jarTool = "$jdkHome\bin\jar.exe"
 
 # Caminho para o SDK JavaFX (baixe do GluonHQ e ajuste se necessário)
-$javafxSdkPath = "..\openjfx-sdk\17.0.11\lib"
+$javafxSdkPath = "D:\java\openjfx-sdk\17.0.19\lib"
 
 # Define Java Options
 $javaOptions = @(
