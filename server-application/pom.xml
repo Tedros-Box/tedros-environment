@@ -416,7 +416,7 @@
 			<id>db-postgres</id>
 			<properties>
 				<tedros.db.driver>org.postgresql.Driver</tedros.db.driver>
-				<tedros.db.url>jdbc:postgresql://localhost:5432/tedros</tedros.db.url>
+				<tedros.db.url>jdbc:postgresql://localhost:5432/tedros?stringtype=unspecified</tedros.db.url>
 				<tedros.db.user>tdrs</tedros.db.user>
 				<tedros.db.password>xpto</tedros.db.password>
 			</properties>
