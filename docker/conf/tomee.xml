@@ -5,10 +5,10 @@
   <!-- activate next line to be able to deploy applications in apps -->
   <Deployments dir="apps" />
   
-  <!-- Datasource parametrizado (feature flag H2 / PostgreSQL).
+  <!-- Datasource parametrizado (feature flag por vendor via TEDROS_DB_*).
        Os placeholders ${tedros.db.*} sao resolvidos pelo TomEE em runtime a partir
        do conf/system.properties, gerado pelo entrypoint.sh com base nas variaveis
-       de ambiente TEDROS_DB_* do container. -->
+       de ambiente TEDROS_DB_* do container. Default: PostgreSQL. -->
   <Resource id="tedrosDataSource" type="DataSource">
   JdbcDriver ${tedros.db.driver}
   JdbcUrl ${tedros.db.url}

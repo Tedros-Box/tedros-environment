@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  # Feature flag do banco de dados via profiles do Compose:
-  #   docker compose --profile h2 up -d        -> stack com H2
-  #   docker compose --profile postgres --env-file .env.postgres up -d  -> stack com PostgreSQL
-  # As variaveis TEDROS_DB_* tem default H2 e podem ser sobrescritas
-  # via ambiente ou --env-file (ver .env.postgres).
+  # Feature flag do banco via Compose profiles + env TEDROS_DB_*:
+  #   docker compose --profile postgres --env-file .env.postgres up -d
+  # Para outro vendor (ex. Oracle): criar servico com profiles: ["oracle"],
+  # arquivo .env.oracle com TEDROS_DB_*, e init SQL em db/init-oracle.sql.
+  # Defaults TEDROS_DB_* apontam para PostgreSQL (provider atual).
   tomee1:
     build:
       context: .
@@ -18,16 +18,13 @@ services:
       - TEDROS_NODE_NAME=tomee1 # label 'node' das metricas Prometheus (por no)
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
-      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
-      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';}
+      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.postgresql.Driver}
+      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:postgresql://postgres:5432/tedros?stringtype=unspecified}
       - TEDROS_DB_USER=${TEDROS_DB_USER:-tdrs}
       - TEDROS_DB_PASSWORD=${TEDROS_DB_PASSWORD:-xpto}
     ports:
       - "8000:8000" # JPDA debug port (tomee1)
     depends_on:
-      h2db:
-        condition: service_started
-        required: false
       postgres:
         condition: service_healthy
         required: false
@@ -50,16 +47,13 @@ services:
       - TEDROS_NODE_NAME=tomee2 # label 'node' das metricas Prometheus (por no)
       - REDIS_HOST=tedros-redis # Nome do container do Redis que será criado
       - REDIS_PORT=6379
-      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.h2.Driver}
-      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:h2:tcp://h2db:1521/h2/db;INIT=RUNSCRIPT FROM '/opt/h2-data/init.sql';}
+      - TEDROS_DB_DRIVER=${TEDROS_DB_DRIVER:-org.postgresql.Driver}
+      - TEDROS_DB_URL=${TEDROS_DB_URL:-jdbc:postgresql://postgres:5432/tedros?stringtype=unspecified}
       - TEDROS_DB_USER=${TEDROS_DB_USER:-tdrs}
       - TEDROS_DB_PASSWORD=${TEDROS_DB_PASSWORD:-xpto}
     ports:
       - "8001:8001" # JPDA debug port (tomee2)
     depends_on:
-      h2db:
-        condition: service_started
-        required: false
       postgres:
         condition: service_healthy
         required: false
@@ -67,22 +61,6 @@ services:
         condition: service_started
       redis:
         condition: service_started
-    networks:
-      - tedros-net
-
-  h2db:
-    image: oscarfonts/h2:1.4.199
-    container_name: tedros-h2db
-    restart: always
-    profiles: ["h2"]
-    environment:
-      - H2_OPTIONS=-web -webAllowOthers -tcp -tcpAllowOthers -ifNotExists -baseDir /opt/h2-data
-    ports:
-      - "1521:1521"
-      - "81:81"
-    volumes:
-      - h2_data:/opt/h2-data
-      - ./db/init.sql:/opt/h2-data/init.sql:ro
     networks:
       - tedros-net
 
@@ -169,7 +147,6 @@ services:
       - tedros-net
 
 volumes:
-  h2_data:
   pg_data:
   mongo_data:
 

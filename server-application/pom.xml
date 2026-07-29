@@ -128,11 +128,6 @@
 			<version>1.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<version>${h2.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>${postgresql.version}</version>
@@ -196,10 +191,6 @@
 						    <dependency>
 								<groupId>org.apache.logging.log4j</groupId>
 						  		<artifactId>log4j-api</artifactId>
-							</dependency>
-							<dependency>
-								<groupId>com.h2database</groupId>
-								<artifactId>h2</artifactId>
 							</dependency>
 							<dependency>
 								<groupId>org.postgresql</groupId>
@@ -270,9 +261,10 @@
 					<configuration>
 						<home>${project.build.directory}/catalina-base</home>
 						<properties>
-							<!-- Feature flag do banco: valores definidos pelos profiles
-							     db-h2 (default) e db-postgres; o Cargo substitui os tokens
-							     @tedros.db.*@ nos config files (system.properties) -->
+							<!-- Feature flag do banco: valores definidos pelo profile Maven
+							     db-<vendor> (default: db-postgres). Para outro banco, criar
+							     profile db-<vendor> espelhando db-postgres. Apps nao mudam.
+							     O Cargo substitui @tedros.db.*@ em system.properties. -->
 							<tedros.db.driver>${tedros.db.driver}</tedros.db.driver>
 							<tedros.db.url>${tedros.db.url}</tedros.db.url>
 							<tedros.db.user>${tedros.db.user}</tedros.db.user>
@@ -398,22 +390,15 @@
 		</plugins>
 	</build>
 
-	<!-- PROFILES: feature flag do banco de dados (uso: mvn cargo:run -Pdb-postgres) -->
+	<!-- PROFILES: feature flag do banco (default Postgres).
+	     Uso: mvn cargo:run  |  futuro: mvn cargo:run -Pdb-oracle
+	     Para outro vendor, criar profile db-<vendor> com tedros.db.*. Apps nao mudam. -->
 	<profiles>
 		<profile>
-			<id>db-h2</id>
+			<id>db-postgres</id>
 			<activation>
 				<activeByDefault>true</activeByDefault>
 			</activation>
-			<properties>
-				<tedros.db.driver>org.h2.Driver</tedros.db.driver>
-				<tedros.db.url>jdbc:h2:tcp://localhost/~/.tedrosData/h2/db;INIT=runscript from '~/.tedrosData/init.sql';</tedros.db.url>
-				<tedros.db.user>tdrs</tedros.db.user>
-				<tedros.db.password>xpto</tedros.db.password>
-			</properties>
-		</profile>
-		<profile>
-			<id>db-postgres</id>
 			<properties>
 				<tedros.db.driver>org.postgresql.Driver</tedros.db.driver>
 				<tedros.db.url>jdbc:postgresql://localhost:5432/tedros?stringtype=unspecified</tedros.db.url>
