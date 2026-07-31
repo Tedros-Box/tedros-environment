@@ -6,8 +6,8 @@
 	<Deployments dir="apps" />
 
 	<!-- Datasource parametrizado: os valores tedros.db.* vem do conf/system.properties
-	     (injetados no build pelo Cargo a partir dos profiles Maven db-h2 / db-postgres).
-	     O TomEE resolve os placeholders ${...} em tempo de execucao. -->
+	     (injetados no build pelo Cargo a partir do profile Maven db-<vendor>,
+	     default db-postgres). O TomEE resolve ${...} em tempo de execucao. -->
 	<Resource id="tedrosDataSource" type="DataSource">
 		JdbcDriver ${tedros.db.driver}
 		JdbcUrl ${tedros.db.url}

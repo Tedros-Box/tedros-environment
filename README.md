@@ -1,7 +1,7 @@
 # Tedros Environment
 
 ## Introdução
-Este repositório contém toda a infraestrutura e configurações necessárias para rodar o ambiente do Tedros utilizando Docker (incluindo serviços como Nginx, instâncias do TomEE, MongoDB, PostgreSQL ou H2 e Redis). 
+Este repositório contém toda a infraestrutura e configurações necessárias para rodar o ambiente do Tedros utilizando Docker (incluindo serviços como Nginx, instâncias do TomEE, MongoDB, PostgreSQL e Redis). O banco é selecionado por feature flag (`TEDROS_DB_*` + Compose profile); o provider atual é PostgreSQL. 
 
 ## Boas Práticas de Estrutura de Diretórios
 Para garantir que o fluxo de build funcione de maneira automatizada e integrada, a melhor prática é manter os três repositórios principais do ecossistema Tedros nivelados em um mesmo diretório base. Sua estrutura de pastas deve ficar exatamente desta forma:
@@ -28,7 +28,6 @@ Abra o arquivo como **Administrador** no caminho `C:\Windows\System32\drivers\et
 ```text
 127.0.0.1       tedros.test
 127.0.0.1       www.tedros.test
-127.0.0.1       h2db.tedros.test
 ```
 
 ### 2. Geração de Certificados SSL e configuração do JDK (Cacerts)
@@ -118,43 +117,42 @@ Abaixo detalhamos a finalidade de cada projeto e sub-pasta contidos neste reposi
 
 ### `docker`
 **Finalidade:**
-Fornecer a infraestrutura em contêineres para executar o ambiente Tedros completo (Nginx, instâncias do TomEE, MongoDB, Redis e banco de dados PostgreSQL ou H2) em uma rede isolada, utilizando o `docker-compose`.
+Fornecer a infraestrutura em contêineres para executar o ambiente Tedros completo (Nginx, instâncias do TomEE, MongoDB, Redis e PostgreSQL) em uma rede isolada, utilizando o `docker-compose`. O vendor do banco é escolhido por feature flag (`--profile <vendor>` + `.env.<vendor>` + `TEDROS_DB_*`).
 
 **How-to:**
 Para que o desenvolvedor suba o contêiner sem enfrentar os erros comuns de *crash* nos serviços (ex: "Connection refused"):
 1. Garanta que o serviço Docker (como o Docker Desktop) está ligado e rodando.
-2. Certifique-se de que configurou o arquivo `hosts` do Windows (conforme a seção principal). Abra o arquivo como **Administrador** no caminho `C:\Windows\System32\drivers\etc\hosts` e adicione o seguinte conteúdo:
+2. Certifique-se de que configurou o arquivo `hosts` do Windows (conforme a seção principal). Abra o arquivo como **Administrador** no caminho `C:\Windows\System32\drivers\etc\hosts` e adicione:
    ```text
    127.0.0.1       tedros.test
    127.0.0.1       www.tedros.test
-   127.0.0.1       h2db.tedros.test
    ```
 3. **MUITO IMPORTANTE:** Siga todo o processo de geração dos certificados TLS com o `mkcert` dentro de `nginx/ssl_local`, além de copiar o `rootCA.pem`. Sem isso, o contêiner do MongoDB e o proxy reverso Nginx não conseguirão escutar a porta 443 e reiniciarão sem parar.
-4. Caso precise inicializar o banco com dados locais, execute o script do `startup-database` previamente.
-5. Navegue pelo terminal (PowerShell) para a pasta `docker` e inicie o ambiente utilizando o profile do banco desejado (PostgreSQL é o padrão recomendado):
+4. Caso precise inicializar o banco local para Cargo, execute o script do `startup-database` previamente.
+5. Navegue pelo terminal (PowerShell) para a pasta `docker` e inicie com PostgreSQL (provider atual):
    
-   **Para rodar o ambiente com PostgreSQL:**
-   Primeiro, crie um arquivo chamado `.env.postgres` na pasta `docker` com as credenciais (não versione este arquivo):
+   Crie/ajuste `.env.postgres` (não versione senhas reais):
    ```env
-   # Feature flag: valores TEDROS_DB_* para rodar o stack de producao com PostgreSQL.
    # Uso: docker compose --profile postgres --env-file .env.postgres up -d
-   # ATENCAO: contem senha — restrinja a leitura (chmod 600 .env.postgres) e nao versione.
-   # NOTA: $ literal precisa ser escrito como $$ (o compose interpola $VAR em env files).
    TEDROS_DB_DRIVER=org.postgresql.Driver
-   TEDROS_DB_URL=jdbc:postgresql://postgres:5432/tedros
+   TEDROS_DB_URL=jdbc:postgresql://postgres:5432/tedros?stringtype=unspecified
    TEDROS_DB_USER=tdrs
    TEDROS_DB_PASSWORD=<SENHA FORTE>
    ```
-   Depois, inicie os contêineres:
+   Depois:
    ```bash
-   docker-compose --profile postgres --env-file .env.postgres up -d --build
+   docker compose --profile postgres --env-file .env.postgres up -d --build
    ```
-   
-   **Para rodar o ambiente com H2 (exemplo):**
-   ```bash
-   docker-compose --profile h2 up -d --build
-   ```
-6. Opcionalmente, acompanhe a saúde dos contêineres com `docker-compose logs -f`.
+
+   | Camada | Mecanismo | Provider atual |
+   |--------|-----------|----------------|
+   | Compose | `--profile postgres` | PostgreSQL |
+   | Env | `.env.postgres` → `TEDROS_DB_*` | PostgreSQL |
+   | Cargo | Maven `-Pdb-postgres` (default) | PostgreSQL |
+   | Driver | `common/lib` na imagem TomEE | `postgresql` |
+
+   > **Adicionar outro vendor (ex. Oracle):** serviço Compose com `profiles: ["oracle"]`, `.env.oracle` com `TEDROS_DB_*`, init SQL, driver em `common/lib`. Apps não mudam.
+6. Opcionalmente, acompanhe a saúde dos contêineres com `docker compose logs -f`.
 
 ---
 
@@ -171,9 +169,7 @@ Subir o servidor TomEE utilizando o repositório Maven local através do plugin 
 **How-to:**
 Para subir o servidor via plugin *Cargo*, não é necessário interagir com o Docker.
 No terminal, dentro da pasta do projeto `server-application`:
-1. **Rode para iniciar o servidor:** 
-   - Com H2: `mvn cargo:run`
-   - Com PostgreSQL: `mvn cargo:run -Pdb-postgres`
+1. **Rode para iniciar o servidor:** `mvn cargo:run` (profile `db-postgres` ativo por default)
 2. **Rode para parar o servidor:** `mvn cargo:stop`
 3. **No cliente do Tedros**, ajuste a configuração para apontar para o Cargo:
    * **URL do provedor:** `http://{0}:8081/tomee/ejb` (Note a porta 8081 em HTTP).
@@ -219,19 +215,16 @@ Se você quiser que o TomEE suba um módulo novo:
 
 ### `startup-database`
 **Finalidade:**
-Criar a infraestrutura de pastas locais de sistema e subir os arquivos base para o banco de dados local.
+Bootstrap do banco local para desenvolvimento (Cargo).
 
 **How-to:**
-O desenvolvedor precisa inicializar a estrutura do banco desejado (PostgreSQL ou H2).
-1. Abra o PowerShell e navegue até a pasta `startup-database`.
-2. Para que todo o processo funcione de forma automática, criamos um script para Windows:
-   ```powershell
-   # Para PostgreSQL (Padrão)
-   .\create-tedros-data.ps1 -Database postgres
-   # Para H2
-   .\create-tedros-data.ps1 -Database h2
-   ```
-   *Para o PostgreSQL, este script sobe um contêiner local com o banco. Para o H2, ele varre a sua pasta de usuário (home), cria o diretório necessário e faz a cópia do `init.sql` se ele não existir.*
+O provider atual é PostgreSQL. Abra o PowerShell na pasta `startup-database`:
+```powershell
+.\create-tedros-data.ps1 -Database postgres
+```
+O script sobe o contêiner local via `docker-compose-pg.yml` (schemas criados por `init-postgres.sql`).
+
+> Para outro vendor no futuro: estender o `ValidateSet` do script e adicionar um compose dedicado.
 
 ---
 

@@ -1,7 +1,8 @@
-# PostgreSQL local para desenvolvimento (alternativa ao H2 do startup-database).
+# PostgreSQL local para desenvolvimento (provider default do Tedros).
 # Uso:
 #   docker compose -f docker-compose-pg.yml up -d
-# Depois suba o servidor com: mvn cargo:run -Pdb-postgres (em server-application)
+#   ou: .\create-tedros-data.ps1 -Database postgres
+# Depois suba o servidor com: mvn cargo:run  (profile db-postgres ativo por default)
 services:
   postgres:
     image: pgvector/pgvector:pg16
