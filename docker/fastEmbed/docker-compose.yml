@@ -1,0 +1,44 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: fastembed-pg
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fastembed}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastembed}
+      POSTGRES_DB: ${POSTGRES_DB:-fastembed}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fastembed} -d ${POSTGRES_DB:-fastembed}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: fastembed-api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fastembed}:${POSTGRES_PASSWORD:-fastembed}@db:5432/${POSTGRES_DB:-fastembed}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-384}
+      CHUNK_SIZE: ${CHUNK_SIZE:-500}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-80}
+      FASTEMBED_CACHE_PATH: /cache/fastembed
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - model_cache:/cache/fastembed
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  model_cache:
