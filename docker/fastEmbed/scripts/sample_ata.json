@@ -1,0 +1,10 @@
+{
+  "title": "Ata reunião produto 16/07",
+  "doc_type": "ata",
+  "source": "teams",
+  "content": "A reunião iniciou com a revisão do backlog. Foi decidido priorizar a integração com pgvector e o suporte a documentos em português. O prazo sugerido para a POC é sexta-feira. Maria ficou responsável pelo pipeline de ingestão. João vai preparar os testes de busca semântica.",
+  "metadata": {
+    "participantes": ["Maria", "João"],
+    "data": "2026-07-16"
+  }
+}
